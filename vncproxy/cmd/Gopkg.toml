@@ -1,0 +1,15 @@
+[[constraint]]
+    name = "github.com/xgfone/go-tools"
+    version = "v4.0.0"
+
+[[constraint]]
+    name = "github.com/xgfone/miss"
+    branch = "master"
+
+[[constraint]]
+    name = "github.com/go-redis/redis"
+    version = "v6.6.0"
+
+[[constraint]]
+    name = "github.com/gorilla/websocket"
+    version = "v1.4.0"
