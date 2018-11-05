@@ -11,5 +11,5 @@
     version = "v6.6.0"
 
 [[constraint]]
-    name = "github.com/gorilla/websocket"
-    version = "v1.4.0"
+    name = "github.com/xgfone/websocket"
+    branch = "master"
