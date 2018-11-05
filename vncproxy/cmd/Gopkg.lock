@@ -43,7 +43,7 @@
     ".",
     "vncproxy"
   ]
-  revision = "41af1fc68aab9534aaf4d999cec05332c4501e23"
+  revision = "3e550d05637817fbc64111ed7500cefeb95940dc"
 
 [solve-meta]
   analyzer-name = "dep"
