@@ -100,14 +100,14 @@ func SetSubprotocol(protocol string) Option {
 }
 
 // SetPingHander sets the ping handler.
-func SetPingHander(h func(data []byte)) Option {
+func SetPingHander(h func(ws *Websocket, data []byte)) Option {
 	return func(ws *Websocket) {
 		ws.handlePing = h
 	}
 }
 
 // SetPongHander sets the pong handler.
-func SetPongHander(h func(data []byte)) Option {
+func SetPongHander(h func(ws *Websocket, data []byte)) Option {
 	return func(ws *Websocket) {
 		ws.handlePong = h
 	}
@@ -144,8 +144,8 @@ type Websocket struct {
 	receivedClose bool
 	closeStatus   CloseStatus
 
-	handlePing func([]byte)
-	handlePong func([]byte)
+	handlePing func(*Websocket, []byte)
+	handlePong func(*Websocket, []byte)
 }
 
 // NewWebsocket creates an websocket.
@@ -173,7 +173,7 @@ func NewWebsocket(conn net.Conn, opts ...Option) *Websocket {
 	ws.partBuffer = make([]byte, 0, ws.bufferSize)
 	ws.sendBuffer = make([]byte, 0, ws.bufferSize)
 	if ws.handlePing == nil {
-		ws.handlePing = func(data []byte) {
+		ws.handlePing = func(ws *Websocket, data []byte) {
 			ws.Pong(data...)
 			if ws.timeout > 0 {
 				ws.SetDeadline(time.Now().Add(ws.timeout))
@@ -181,7 +181,7 @@ func NewWebsocket(conn net.Conn, opts ...Option) *Websocket {
 		}
 	}
 	if ws.handlePong == nil {
-		ws.handlePong = func(data []byte) {
+		ws.handlePong = func(ws *Websocket, data []byte) {
 			if ws.timeout > 0 {
 				ws.SetDeadline(time.Now().Add(ws.timeout))
 			}
@@ -240,12 +240,12 @@ func (ws *Websocket) SetWriteDeadline(t time.Time) error {
 }
 
 // SetPingHander sets the ping handler.
-func (ws *Websocket) SetPingHander(h func(data []byte)) {
+func (ws *Websocket) SetPingHander(h func(ws *Websocket, data []byte)) {
 	ws.handlePing = h
 }
 
 // SetPongHander sets the pong handler.
-func (ws *Websocket) SetPongHander(h func(data []byte)) {
+func (ws *Websocket) SetPongHander(h func(ws *Websocket, data []byte)) {
 	ws.handlePong = h
 }
 
@@ -544,14 +544,14 @@ func (ws *Websocket) recvMsg() (int, []byte, error) {
 				continue
 			}
 
-			ws.handlePing(frame.payload)
+			ws.handlePing(ws, frame.payload)
 		case MsgTypePong:
 			if !frame.fin {
 				ws.Close(CloseUnsupportedData, "Unsupported: Fragmented pong")
 				continue
 			}
 
-			ws.handlePong(frame.payload)
+			ws.handlePong(ws, frame.payload)
 		default:
 			ws.Close(CloseUnsupportedData,
 				fmt.Sprintf("Unsupported: Unknown opcode 0x%02x", frame.opcode))
