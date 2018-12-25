@@ -17,24 +17,23 @@
   version = "v6.14.2"
 
 [[projects]]
-  name = "github.com/xgfone/go-tools"
-  packages = [
-    "io2",
-    "lifecycle",
-    "net2/http2",
-    "pools",
-    "signal2",
-    "sync2",
-    "types"
-  ]
-  revision = "fdc6594dbc786eb8492dddd4aaaac7a4af22be9e"
-  version = "v4.0.0"
+  name = "github.com/xgfone/logger"
+  packages = ["."]
+  revision = "c54b0f14edd66948a34a06e1f467ff523cd48c55"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
-  name = "github.com/xgfone/miss"
-  packages = ["."]
-  revision = "1233446ef50b901ef6812e3285da689d958a40c3"
+  name = "github.com/xgfone/ship"
+  packages = [
+    ".",
+    "binder",
+    "core",
+    "render",
+    "router/echo",
+    "utils"
+  ]
+  revision = "7d061ab118e12f4b81336f8b988583f51f41c59b"
 
 [[projects]]
   branch = "master"
@@ -43,11 +42,11 @@
     ".",
     "vncproxy"
   ]
-  revision = "3e550d05637817fbc64111ed7500cefeb95940dc"
+  revision = "0af31ddd43e7153a0f267312afb277feb4cffb51"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a20d4ccf2c945ffe3c3d258b45ae562915ed37fb548ad523545d2ceb146f2c65"
+  inputs-digest = "813d063e13cb08567fa55e31354400add72722c1dc908e94c3664169923ad030"
   solver-name = "gps-cdcl"
   solver-version = 1

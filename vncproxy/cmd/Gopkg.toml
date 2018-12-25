@@ -1,6 +1,6 @@
 [[constraint]]
     name = "github.com/xgfone/logger"
-    branch = "v1.0.0"
+    version = "v1.0.0"
 
 [[constraint]]
     name = "github.com/go-redis/redis"
@@ -8,4 +8,8 @@
 
 [[constraint]]
     name = "github.com/xgfone/websocket"
+    branch = "master"
+
+[[constraint]]
+    name = "github.com/xgfone/ship"
     branch = "master"
