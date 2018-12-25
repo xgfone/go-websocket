@@ -1,22 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/go-redis/redis"
-	"github.com/xgfone/go-tools/lifecycle"
-	"github.com/xgfone/go-tools/net2/http2"
-	"github.com/xgfone/go-tools/signal2"
-	"github.com/xgfone/miss"
+	"github.com/xgfone/logger"
+	"github.com/xgfone/ship"
 	"github.com/xgfone/websocket/vncproxy"
 )
-
-var logger = miss.GetGlobalLogger()
 
 var versionS = "1.0.0"
 
@@ -45,7 +41,6 @@ func init() {
 }
 
 func main() {
-	defer lifecycle.Stop()
 	flag.Parse()
 	if version {
 		fmt.Println(versionS)
@@ -54,36 +49,28 @@ func main() {
 	tokenExpiration := time.Duration(expiration) * time.Second
 
 	// Handle the logging
-	level := miss.NameToLevel(logLevel)
-	var out io.Writer = os.Stdout
-	if logFile != "" {
-		file, err := miss.SizedRotatingFileWriter(logFile, 1024*1024*1024, 30)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		lifecycle.Register(func() { file.Close() })
-		out = file
+	_logger, closer, err := logger.SimpleLogger(logLevel, logFile)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-	encConf := miss.EncoderConfig{IsLevel: true, IsTime: true}
-	encoder := miss.KvTextEncoder(out, encConf)
-	logger = miss.New(encoder).Level(level).Cxt("caller", miss.Caller())
+	defer closer.Close()
+	logger.SetGlobalLogger(_logger)
 
 	// Handle the redis client
 	redisOpt, err := redis.ParseURL(redisURL)
 	if err != nil {
-		logger.Error("can't parse redis URL", "url", redisURL, "err", err)
+		logger.Error("can't parse redis URL: url=%s, err=%s", redisURL, err)
 		return
 	}
 	redisClient := redis.NewClient(redisOpt)
-	lifecycle.Register(func() { redisClient.Close() })
 
 	wsconf := vncproxy.ProxyConfig{
 		GetBackend: func(r *http.Request) string {
 			if vs := r.URL.Query()["token"]; len(vs) > 0 {
 				token, err := redisClient.Get(vs[0]).Result()
 				if err != nil && err != redis.Nil {
-					logger.Error("redis GET error", "err", err)
+					logger.Error("redis GET error: %s", err)
 				}
 				return token
 			}
@@ -93,39 +80,42 @@ func main() {
 			return true
 		},
 	}
+
 	handler := vncproxy.NewWebsocketVncProxyHandler(wsconf)
-	http.HandleFunc("/connections", func(w http.ResponseWriter, r *http.Request) {
-		http2.String(w, http.StatusOK, "%d", handler.Connections())
+	rlogger := logger.ToLoggerWithoutError(logger.GetGlobalLogger())
+
+	router1 := ship.New(ship.Config{Logger: rlogger, Signals: []os.Signal{}})
+	router2 := ship.New(ship.Config{Logger: rlogger})
+	router2.RegisterOnShutdown(func() { redisClient.Close() })
+
+	router1.Route("/connections").GET(func(ctx ship.Context) error {
+		return ctx.String(http.StatusOK, fmt.Sprintf("%d", handler.Connections()))
 	})
-	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
-		query := r.URL.Query()
-		token := http2.GetQuery(query, "token")
-		addr := http2.GetQuery(query, "addr")
+	router1.Route("/token").POST(func(ctx ship.Context) error {
+		token := ctx.QueryParam("token")
+		addr := ctx.QueryParam("addr")
 		if token == "" || addr == "" {
-			http2.String(w, http.StatusBadRequest, "missing token or addr")
-			return
+			return ctx.String(http.StatusBadRequest, "missing token or addr")
 		}
-		redisClient.Set(token, addr, tokenExpiration)
+		if err := redisClient.Set(token, addr, tokenExpiration).Err(); err != nil {
+			return ship.ErrInternalServerError.SetInnerError(err)
+		}
+		return nil
+	})
+	router2.Route("/*").CONNECT(func(ctx ship.Context) error {
+		handler.ServeHTTP(ctx.Response(), ctx.Request())
+		return nil
 	})
 
-	go signal2.HandleSignal()
 	go func() {
-		logger.Info("manager listening", "addr", managerAddr)
-		if err := http2.ListenAndServe(managerAddr, nil); err != nil {
-			logger.Error("Manager ListenAndServe", "err", err)
-			lifecycle.Stop()
+		logger.Info("manager listening on %s", managerAddr)
+		if err := router1.Start(managerAddr); err != nil {
+			logger.Error("Manager ListenAndServe: %s", err)
+			router2.Shutdown(context.Background())
 		}
 	}()
 
-	tlsfiles := []string{}
-	if certFile != "" && keyFile != "" {
-		tlsfiles = []string{certFile, keyFile}
-	} else if certFile != "" || keyFile != "" {
-		logger.Warn("The cert and key file is incomplete and don't use TLS")
-	}
-
-	logger.Info("Listening", "addr", listenAddr, "tls", len(tlsfiles) != 0)
-	if err := http2.ListenAndServe(listenAddr, handler, tlsfiles...); err != nil {
-		logger.Error("ListenAndServe", "err", err)
+	if err := router2.Start(listenAddr, certFile, keyFile); err != nil {
+		logger.Error("%s", err)
 	}
 }
