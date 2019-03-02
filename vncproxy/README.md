@@ -11,11 +11,11 @@ tokens := map[string]string {
 	// ...
 }
 wsconf := vncproxy.ProxyConfig{
-	GetBackend: func(r *http.Request) string {
+	GetBackend: func(r *http.Request) (string, error) {
 		if vs := r.URL.Query()["token"]; len(vs) > 0 {
-			return tokens[vs[0]]
+			return tokens[vs[0]], nil
 		}
-		return ""
+		return "", nil
 	},
 	CheckOrigin: func(r *http.Request) bool {
 		return true
