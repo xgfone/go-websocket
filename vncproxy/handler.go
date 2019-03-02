@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,41 +16,28 @@ import (
 type peer struct {
 	source *websocket.Websocket
 	target *net.TCPConn
-
-	sendSource chan []byte
-	sendTarget chan []byte
-
 	closed int32
+	start  time.Time
 }
 
-func (p *peer) Close() error {
+func (p *peer) Close() {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
-		p.source.Close(websocket.CloseNormalClosure, "close")
+		p.source.SendClose(websocket.CloseNormalClosure, "close")
 		p.target.Close()
-
-		close(p.sendSource)
-		close(p.sendTarget)
-
-		logger.Info("Close Peer", "source", p.source.RemoteAddr().String(),
-			"target", p.target.RemoteAddr().String())
+		logger.Info("Close VNC: source=%s, target=%s, duration=%s",
+			p.source.RemoteAddr().String(), p.target.RemoteAddr().String(),
+			time.Now().Sub(p.start).String())
 	}
-	return nil
 }
 
-func newPeer(source *websocket.Websocket, target *net.TCPConn) *peer {
-	return &peer{
-		source: source,
-		target: target,
-
-		sendSource: make(chan []byte, 256),
-		sendTarget: make(chan []byte, 256),
-	}
+func newPeer(source *websocket.Websocket, target *net.TCPConn, now time.Time) *peer {
+	return &peer{source: source, target: target, start: now}
 }
 
 // ProxyConfig is used to configure WsVncProxyHandler.
 type ProxyConfig struct {
 	// MaxMsgSize is used to control the size of the websocket message.
-	// The default is 65535.
+	// The default is 64KB.
 	MaxMsgSize int
 
 	// The timeout is used to dial and the interval time of Ping-Pong.
@@ -65,60 +53,88 @@ type ProxyConfig struct {
 	// Return a backend address to connect to by the request.
 	//
 	// It's required.
-	GetBackend func(r *http.Request) (addr string)
+	GetBackend func(r *http.Request) (addr string, err error)
 }
 
 // WebsocketVncProxyHandler is a VNC proxy handler based on websocket.
 type WebsocketVncProxyHandler struct {
-	connection *int64
-	maxMsgSize int64
+	connection int64
+	peers      map[*peer]struct{}
+	lock       sync.RWMutex
+
 	timeout    time.Duration
-	upgrader   *websocket.Upgrader
-	getBackend func(*http.Request) string
+	upgrader   websocket.Upgrader
+	getBackend func(*http.Request) (string, error)
 }
 
 // NewWebsocketVncProxyHandler returns a new WebsocketVncProxyHandler.
 //
 // Notice: it only supports the binary protocol.
-func NewWebsocketVncProxyHandler(conf ProxyConfig) WebsocketVncProxyHandler {
+func NewWebsocketVncProxyHandler(conf ProxyConfig) *WebsocketVncProxyHandler {
 	if conf.GetBackend == nil {
 		panic(fmt.Errorf("GetBackend is required"))
 	}
+	if conf.MaxMsgSize <= 0 {
+		conf.MaxMsgSize = 65535
+	}
+	if conf.Timeout <= 0 {
+		conf.Timeout = time.Second * 10
+	}
 
-	h := WebsocketVncProxyHandler{
+	handler := &WebsocketVncProxyHandler{
+		peers:      make(map[*peer]struct{}, 1024),
 		timeout:    conf.Timeout,
 		getBackend: conf.GetBackend,
-		maxMsgSize: int64(conf.MaxMsgSize),
-		connection: new(int64),
+		upgrader: websocket.Upgrader{
+			MaxMsgSize:   conf.MaxMsgSize,
+			Timeout:      conf.Timeout,
+			Subprotocols: []string{"binary"},
+			CheckOrigin:  conf.CheckOrigin,
+		},
 	}
-
-	if h.maxMsgSize < 1 {
-		h.maxMsgSize = 65536
-	}
-	if h.timeout <= 0 {
-		h.timeout = time.Second * 10
-	}
-
-	h.upgrader = &websocket.Upgrader{
-		Timeout:      h.timeout,
-		Subprotocols: []string{"binary"},
-		CheckOrigin:  conf.CheckOrigin,
-	}
-
-	return h
+	go handler.tick()
+	return handler
 }
 
 // Connections returns the number of the current websockets.
-func (h WebsocketVncProxyHandler) Connections() int64 {
-	return atomic.LoadInt64(h.connection)
+func (h *WebsocketVncProxyHandler) Connections() int64 {
+	return atomic.LoadInt64(&h.connection)
 }
 
-func (h WebsocketVncProxyHandler) incConnection() {
-	atomic.AddInt64(h.connection, 1)
+func (h *WebsocketVncProxyHandler) incConnection() {
+	atomic.AddInt64(&h.connection, 1)
 }
 
-func (h WebsocketVncProxyHandler) decConnection() {
-	atomic.AddInt64(h.connection, -1)
+func (h *WebsocketVncProxyHandler) decConnection() {
+	atomic.AddInt64(&h.connection, -1)
+}
+
+func (h *WebsocketVncProxyHandler) addPeer(p *peer) {
+	h.lock.Lock()
+	h.peers[p] = struct{}{}
+	h.lock.Unlock()
+}
+
+func (h *WebsocketVncProxyHandler) delPeer(p *peer) {
+	h.lock.Lock()
+	delete(h.peers, p)
+	h.lock.Unlock()
+}
+
+func (h *WebsocketVncProxyHandler) tick() {
+	ticker := time.NewTicker(h.timeout * 8 / 10)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			h.lock.RLock()
+			for peer := range h.peers {
+				peer.source.SendPing(nil)
+			}
+			h.lock.RUnlock()
+		}
+	}
 }
 
 // ServeHTTP implements http.Handler, but it won't return until the connection
@@ -126,26 +142,34 @@ func (h WebsocketVncProxyHandler) decConnection() {
 //
 // Notice: for each connection, it will open other two goroutine,
 // except itself goroutine, for reading from websocket and the backend VNC.
-func (h WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	starttime := time.Now()
 
 	if strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
 		w.Header().Set("Connection", "close")
-		logger.Error("not websocket: client=%s, upgrade=%s", r.RemoteAddr, r.Header.Get("Upgrade"))
+		logger.Error("not websocket: client=%s, upgrade=%s",
+			r.RemoteAddr, r.Header.Get("Upgrade"))
 		return
 	}
 
-	backend := h.getBackend(r)
-	if backend == "" {
-		w.Header().Set("Connection", "close")
-		logger.Error("can't get backend: client=%s, url=%s", r.RemoteAddr, r.RequestURI)
-		return
-	}
-
-	conn, err := h.upgrader.Upgrade(w, r, nil)
+	backend, err := h.getBackend(r)
 	if err != nil {
 		w.Header().Set("Connection", "close")
-		logger.Error("can't update to websocket: client=%s, err=%s", r.RemoteAddr, err)
+		logger.Error("can't get backend: client=%s, url=%s, err=%s",
+			r.RemoteAddr, r.RequestURI, err)
+		return
+	} else if backend == "" {
+		w.Header().Set("Connection", "close")
+		logger.Error("can't get backend: client=%s, url=%s",
+			r.RemoteAddr, r.RequestURI)
+		return
+	}
+
+	ws, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		w.Header().Set("Connection", "close")
+		logger.Error("can't update to websocket: client=%s, err=%s",
+			r.RemoteAddr, err)
 		return
 	}
 
@@ -155,76 +179,59 @@ func (h WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	c, err := net.DialTimeout("tcp", backend, h.timeout)
 	if err != nil {
 		logger.Error("can't connect to VNC: addr=%s, err=%s", backend, err)
-		conn.Close(websocket.CloseAbnormalClosure, "cannot connect to the backend")
+		ws.SendClose(websocket.CloseAbnormalClosure, "cannot connect to the backend")
 		return
 	}
-	logger.Info("connected to VNC: source=%s, target=%s, cost=%s", r.RemoteAddr, backend, time.Now().Sub(starttime).String())
-
-	peer := newPeer(conn, c.(*net.TCPConn))
-
-	go h.readSource(peer)
-	go h.readTarget(peer)
-
-	ticker := time.NewTicker(h.timeout * 8 / 10)
-	defer ticker.Stop()
+	logger.Info("connected to VNC: source=%s, target=%s, cost=%s",
+		r.RemoteAddr, backend, time.Now().Sub(starttime).String())
 
 	h.incConnection()
 	defer h.decConnection()
 
-	for {
-		select {
-		case bs, ok := <-peer.sendSource:
-			if !ok {
-				return
-			}
-			err := peer.source.SendBinaryMsg(bs)
-			if err != nil {
-				logger.Error("can't send data to websocket: addr=%s, err=%s", r.RemoteAddr, err)
-			}
-		case bs, ok := <-peer.sendTarget:
-			if !ok {
-				return
-			}
+	peer := newPeer(ws, c.(*net.TCPConn), starttime)
+	h.addPeer(peer)
+	defer h.delPeer(peer)
 
-			_, err := peer.target.Write(bs)
-			if err != nil {
-				logger.Error("can't send data to VNC: addr=%s, err=%s", backend, err)
-			}
-		case <-ticker.C:
-			err := peer.source.Ping()
-			if err != nil {
-				logger.Error("can't send Ping: addr=%s, err=%s", r.RemoteAddr, err)
-			}
-		}
-	}
+	go h.readSource(peer)
+	h.readTarget(peer)
 }
 
-func (h WebsocketVncProxyHandler) readSource(p *peer) {
-	addr := p.source.RemoteAddr().String()
-
+func (h *WebsocketVncProxyHandler) readSource(p *peer) {
 	for {
-		_, msg, err := p.source.RecvMsg()
+		msgs, err := p.source.RecvMsg()
 		if err != nil {
-			logger.Error("can't read from websocket: addr=%s, err=%s", addr, err)
+			logger.Error("can't read from websocket: addr=%s, err=%s",
+				p.source.RemoteAddr().String(), err)
 			p.Close()
 			return
 		}
-		p.sendTarget <- msg
+
+		for _, msg := range msgs {
+			_, err := p.target.Write(msg.Data)
+			if err != nil {
+				logger.Error("can't send data to VNC: addr=%s, err=%s",
+					p.target.RemoteAddr().String(), err)
+			}
+		}
 	}
 }
 
-func (h WebsocketVncProxyHandler) readTarget(p *peer) {
-	addr := p.target.RemoteAddr().String()
-
+func (h *WebsocketVncProxyHandler) readTarget(p *peer) {
 	for {
 		buf := make([]byte, 2048)
 		n, err := p.target.Read(buf)
 		if err != nil {
-			logger.Error("can't read from VNC: addr=%s, err=%s", addr, err)
+			logger.Error("can't read from VNC: addr=%s, err=%s",
+				p.target.RemoteAddr().String(), err)
 			p.Close()
 			return
 		}
 
-		p.sendSource <- buf[:n]
+		if err = p.source.SendBinaryMsg(buf[:n]); err != nil {
+			logger.Error("can't send data to websocket: addr=%s, err=%s",
+				p.source.RemoteAddr().String(), err)
+			p.Close()
+			return
+		}
 	}
 }

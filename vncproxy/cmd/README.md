@@ -19,23 +19,25 @@ Notice: The current host must run a redis server listening on `127.0.0.1:6379`, 
 
 ```shell
 [root@localhost opt]# ./vncproxy -h
-Usage of ./wsvnc:
-  -addr string
-        The listen address (default ":5900")
-  -cert string
-        The path of the cert file
-  -expire int
-        The expiration time(s) of the token
-  -key string
-        The path of the key file
+Usage of ./vncproxy:
+  -certfile string
+        The path of cert file.
+  -config-file string
+        The path of the ini config file.
+  -expiration string
+        The expiration time of the token. (default "0s")
+  -keyfile string
+        The path of the key file.
+  -listenaddr string
+        The address that VNC proxy listens to. (default ":5900")
   -logfile string
-        The path of the log file
+        The path of the log file.
   -loglevel string
-        The level of the log, such as debug, info, etc (default "debug")
-  -manager_addr string
-        The address to be used to manage (default "127.0.0.1:9999")
-  -redis string
-        The redis connection url (default "redis://localhost:6379/0")
+        The level of logging, such as debug, info, etc. (default "debug")
+  -manageraddr string
+        The address that the manager listens to. (default "127.0.0.1:9999")
+  -redisurl string
+        The url to connect to redis. (default "redis://localhost:6379/0")
   -version
-        Print the version and exit
+        Print the version and exit.
 ```
