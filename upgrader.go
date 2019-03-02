@@ -13,9 +13,11 @@ import (
 )
 
 func headerContainValue(header http.Header, key string, value string) bool {
-	for _, s := range header[key] {
-		if strings.ToLower(s) == value {
-			return true
+	for _, v := range header[key] {
+		for _, s := range strings.Split(v, ",") {
+			if strings.ToLower(strings.TrimSpace(s)) == value {
+				return true
+			}
 		}
 	}
 	return false
