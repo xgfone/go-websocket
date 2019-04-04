@@ -58,7 +58,7 @@ func encodeHyBi(opcode int, buf, mask []byte, fin bool) []byte {
 		headerLen = 10
 		header[0] = byte(b1)
 		header[1] = byte(127 | maskBit)
-		binary.BigEndian.PutUint16(header[2:], uint16(payloadLen))
+		binary.BigEndian.PutUint64(header[2:], uint64(payloadLen))
 	}
 	headers := header[:headerLen]
 
