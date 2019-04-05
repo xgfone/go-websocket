@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -37,14 +36,14 @@ func main() {
 	config.Conf.SetVersion(versionS)
 	if err := config.Conf.Parse(); err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return
 	}
 
 	// Initialize the logging
 	log, closer, err := logger.SimpleLogger(conf.LogLevel, conf.LogFile)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return
 	}
 	defer closer.Close()
 	logger.SetGlobalLogger(log)
@@ -53,11 +52,13 @@ func main() {
 	redisOpt, err := redis.ParseURL(conf.RedisURL)
 	if err != nil {
 		logger.Error("can't parse redis URL: url=%s, err=%s", conf.RedisURL, err)
-		os.Exit(1)
+		return
 	}
 	redisClient := redis.NewClient(redisOpt)
+	defer redisClient.Close()
 
-	wsconf := vncproxy.ProxyConfig{
+	handler := vncproxy.NewWebsocketVncProxyHandler(vncproxy.ProxyConfig{
+		CheckOrigin: func(r *http.Request) bool { return true },
 		GetBackend: func(r *http.Request) (string, error) {
 			if vs := r.URL.Query()["token"]; len(vs) > 0 {
 				token, err := redisClient.Get(vs[0]).Result()
@@ -68,13 +69,13 @@ func main() {
 			}
 			return "", nil
 		},
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
+	})
 
-	handler := vncproxy.NewWebsocketVncProxyHandler(wsconf)
-	router1 := ship.New(ship.SetName("VNC Proxy"), ship.SetLogger(logger.GetGlobalLogger()))
+	opts := []ship.Option{
+		ship.SetName("VNC Proxy"),
+		ship.SetLogger(logger.ToWriterLogger(logger.GetGlobalLogger())),
+	}
+	router1 := ship.New(opts...)
 	router1.Route("/*").GET(func(ctx *ship.Context) error {
 		handler.ServeHTTP(ctx.Response(), ctx.Request())
 		return nil
