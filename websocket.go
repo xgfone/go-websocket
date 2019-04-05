@@ -73,6 +73,7 @@ type Websocket struct {
 	isClient    bool
 	maxMsgSize  int
 	subprotocol string
+	closeNotice func()
 	handlePing  func(*Websocket, []byte)
 	handlePong  func(*Websocket, []byte)
 
@@ -187,6 +188,13 @@ func (ws *Websocket) SetPongHander(h func(ws *Websocket, data []byte)) *Websocke
 	if h != nil {
 		ws.handlePong = h
 	}
+	return ws
+}
+
+// SetCloseNotice sets the notice function that the connection is closed,
+// that's, the callback cb will be called when the connection is closed.
+func (ws *Websocket) SetCloseNotice(cb func()) *Websocket {
+	ws.closeNotice = cb
 	return ws
 }
 
@@ -544,6 +552,9 @@ func (ws *Websocket) IsClosed() bool {
 
 func (ws *Websocket) setClosed() {
 	atomic.StoreInt32(&ws.closed, 1)
+	if ws.closeNotice != nil {
+		ws.closeNotice()
+	}
 }
 
 // close closes the underlying socket.
