@@ -20,6 +20,7 @@ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/xgfone/go-config v11.0.0+incompatible h1:tUQxBz3GiOJbRdp4ry4RnmmCxdMa91P4ilCIoEAct9c=
 github.com/xgfone/go-config v11.0.0+incompatible/go.mod h1:xBmcAS3buLHIAmjhhLNFZ+GqW7Dc20PUK3HriUbvROs=
+github.com/xgfone/go-tools v5.2.0+incompatible h1:lqzETFzz1nmKozuy3Mg7tgLA0G8/REanW7sSKjf3ikA=
 github.com/xgfone/go-tools v5.2.0+incompatible/go.mod h1:jwIVCdT4a89oiv9nABSuURIQqfQSYhRocVM13Ug0Z3w=
 github.com/xgfone/go-tools v5.5.2+incompatible h1:zIxhriTiSMDe+hQ17OEIYF9ONX5agvDlOMnD6zK93kA=
 github.com/xgfone/go-tools v5.5.2+incompatible/go.mod h1:jwIVCdT4a89oiv9nABSuURIQqfQSYhRocVM13Ug0Z3w=
