@@ -5,7 +5,6 @@ This is an executable program, which may be as the server of [noVNC](https://git
 ### Build
 
 ```shell
-$ dep ensure
 $ go build
 ```
 
@@ -20,24 +19,24 @@ Notice: The current host must run a redis server listening on `127.0.0.1:6379`, 
 ```shell
 [root@localhost opt]# ./vncproxy -h
 Usage of ./vncproxy:
-  -certfile string
+  --certfile string
         The path of cert file.
-  -config-file string
-        The path of the ini config file.
-  -expiration string
-        The expiration time of the token. (default "0s")
-  -keyfile string
+  --config-file string
+        The path of the INI config file.
+  --expiration duration
+        The expiration time of the token.
+  --keyfile string
         The path of the key file.
-  -listenaddr string
+  --listenaddr string
         The address that VNC proxy listens to. (default ":5900")
-  -logfile string
+  --logfile string
         The path of the log file.
-  -loglevel string
+  --loglevel string
         The level of logging, such as debug, info, etc. (default "debug")
-  -manageraddr string
+  --manageraddr string
         The address that the manager listens to. (default "127.0.0.1:9999")
-  -redisurl string
+  --redisurl string
         The url to connect to redis. (default "redis://localhost:6379/0")
-  -version
+  --version
         Print the version and exit.
 ```

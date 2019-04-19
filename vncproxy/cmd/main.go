@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
-	config "github.com/xgfone/go-config"
+	"github.com/xgfone/gconf"
 	"github.com/xgfone/logger"
 	"github.com/xgfone/ship"
 	"github.com/xgfone/websocket/vncproxy"
 )
 
-var versionS = "1.0.0"
+var versionS = "1.2.0"
 
 // Config is used to configure the app.
 type Config struct {
@@ -32,9 +32,9 @@ type Config struct {
 func main() {
 	// Initialize the config.
 	var conf Config
-	config.Conf.RegisterCliStruct("", &conf)
-	config.Conf.SetVersion(versionS)
-	if err := config.Conf.Parse(); err != nil {
+	gconf.Conf.RegisterCliStruct(&conf)
+	gconf.Conf.SetCliVersion("v", "version", versionS, "Print the version and exit.")
+	if err := gconf.Conf.Parse(); err != nil {
 		fmt.Println(err)
 		return
 	}
