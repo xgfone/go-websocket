@@ -17,26 +17,26 @@ $ ./vncproxy
 Notice: The current host must run a redis server listening on `127.0.0.1:6379`, or you can modify it by the cli option `redis`.
 
 ```shell
-[root@localhost opt]# ./vncproxy -h
+[root@localhost ~]# ./vncproxy -h
 Usage of ./vncproxy:
   --certfile string
-        The path of cert file.
+        The path of cert file. (default "")
   --config-file string
-        The path of the INI config file.
+        The path of the INI config file. (default "")
   --expiration duration
-        The expiration time of the token.
+        The expiration time of the token. (default 0s)
   --keyfile string
-        The path of the key file.
+        The path of the key file. (default "")
   --listenaddr string
         The address that VNC proxy listens to. (default ":5900")
   --logfile string
-        The path of the log file.
+        The path of the log file. (default "")
   --loglevel string
         The level of logging, such as debug, info, etc. (default "debug")
   --manageraddr string
         The address that the manager listens to. (default "127.0.0.1:9999")
   --redisurl string
         The url to connect to redis. (default "redis://localhost:6379/0")
-  --version
-        Print the version and exit.
+  --version bool
+        Print the version and exit. (default false)
 ```

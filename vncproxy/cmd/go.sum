@@ -20,8 +20,8 @@ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/urfave/cli v1.20.0 h1:fDqGv3UG/4jbVl/QkFwEdddtEDjh/5Ov6X+0B/3bPaw=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
-github.com/xgfone/gconf v1.0.1 h1:M4yqEowHz2ABRY4t9UCPkx2xDxO/D/LyvqXrPaiZcbk=
-github.com/xgfone/gconf v1.0.1/go.mod h1:nhuGJ8kmVi+NNgFnzDAZjS/kkiOgxD4YJ1qj8RBVlhc=
+github.com/xgfone/gconf v1.4.0 h1:z4+bKj5mQslFXBRfc5OW5y5BMQh59LLl9TMbCJR/37I=
+github.com/xgfone/gconf v1.4.0/go.mod h1:nhuGJ8kmVi+NNgFnzDAZjS/kkiOgxD4YJ1qj8RBVlhc=
 github.com/xgfone/go-tools v5.2.0+incompatible h1:lqzETFzz1nmKozuy3Mg7tgLA0G8/REanW7sSKjf3ikA=
 github.com/xgfone/go-tools v5.2.0+incompatible/go.mod h1:jwIVCdT4a89oiv9nABSuURIQqfQSYhRocVM13Ug0Z3w=
 github.com/xgfone/go-tools v5.5.2+incompatible h1:zIxhriTiSMDe+hQ17OEIYF9ONX5agvDlOMnD6zK93kA=
