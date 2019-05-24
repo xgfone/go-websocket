@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/xgfone/gconf"
-	"github.com/xgfone/logger"
+	"github.com/xgfone/klog"
 	"github.com/xgfone/ship"
 	"github.com/xgfone/websocket/vncproxy"
 )
@@ -39,19 +39,18 @@ func main() {
 		return
 	}
 
-	// Initialize the logging
-	log, closer, err := logger.SimpleLogger(conf.LogLevel, conf.LogFile)
+	log, err := klog.NewSimpleLogger(conf.LogLevel, conf.LogFile, "100M", 100)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer closer.Close()
-	logger.SetGlobalLogger(log)
+	defer log.GetWriter().Close()
+	klog.Std = log
 
 	// Handle the redis client
 	redisOpt, err := redis.ParseURL(conf.RedisURL)
 	if err != nil {
-		logger.Error("can't parse redis URL: url=%s, err=%s", conf.RedisURL, err)
+		log.K("url", conf.RedisURL).E(err).Errorf("can't parse redis URL")
 		return
 	}
 	redisClient := redis.NewClient(redisOpt)
@@ -63,7 +62,7 @@ func main() {
 			if vs := r.URL.Query()["token"]; len(vs) > 0 {
 				token, err := redisClient.Get(vs[0]).Result()
 				if err != nil && err != redis.Nil {
-					logger.Error("redis GET error: %s", err)
+					log.E(err).Errorf("redis GET error")
 				}
 				return token, nil
 			}
@@ -73,7 +72,7 @@ func main() {
 
 	opts := []ship.Option{
 		ship.SetName("VNC Proxy"),
-		ship.SetLogger(logger.ToWriterLogger(logger.GetGlobalLogger())),
+		ship.SetLogger(klog.ToFmtLoggerError(log)),
 	}
 	router1 := ship.New(opts...)
 	router1.Route("/*").GET(func(ctx *ship.Context) error {

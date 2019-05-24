@@ -1,2 +1,4 @@
-github.com/xgfone/logger v4.0.1+incompatible h1:SAKeIHgQlOnWWUBIGZZKX0/Gj0UkwxAWe5NulhNXZ70=
-github.com/xgfone/logger v4.0.1+incompatible/go.mod h1:XECoLKRq8VLab8AoNFHuySIyX8lVzspFOip7iZIHmLk=
+github.com/go-stack/stack v1.8.0 h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=
+github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
+github.com/xgfone/klog v1.3.0 h1:Jc6epTn56B4N7Dw8Lv639ogC1ZNSeYPAXB1owc63EFI=
+github.com/xgfone/klog v1.3.0/go.mod h1:oantaT1HNxrNmaEAK1FWhheosvuCvzJyVkFwXUZ3bcY=
