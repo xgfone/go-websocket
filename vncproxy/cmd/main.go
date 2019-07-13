@@ -12,8 +12,6 @@ import (
 	"github.com/xgfone/websocket/vncproxy"
 )
 
-var versionS = "1.2.0"
-
 // Config is used to configure the app.
 type Config struct {
 	LogFile  string `default:"" help:"The path of the log file."`
@@ -32,16 +30,17 @@ type Config struct {
 func main() {
 	// Initialize the config.
 	var conf Config
-	gconf.Conf.RegisterCliStruct(&conf)
-	gconf.Conf.SetCliVersion("v", "version", versionS, "Print the version and exit.")
-	if err := gconf.Conf.Parse(); err != nil {
-		fmt.Println(err)
+	gconf.RegisterStruct(&conf)
+	gconf.SetStringVersion("1.3.0")
+	gconf.SetErrHandler(gconf.ErrorHandler(func(err error) { klog.Errorf("%s", err) }))
+	if err := gconf.AddAndParseOptFlag(gconf.Conf); err != nil {
+		klog.E(err).Errorf("failed to parse the cli flags")
 		return
 	}
 
 	log, err := klog.NewSimpleLogger(conf.LogLevel, conf.LogFile, "100M", 100)
 	if err != nil {
-		fmt.Println(err)
+		klog.E(err).Errorf("failed to create log file")
 		return
 	}
 	defer log.GetWriter().Close()
