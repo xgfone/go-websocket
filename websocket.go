@@ -364,7 +364,7 @@ func (ws *Websocket) sendMsg(msgType int, message []byte, _fin ...bool) (err err
 //
 // Notice:
 //    1. msgType be only MsgTypeText or MsgTypeBinary.
-//    2. The message data is not cached, such as putting it into channel.
+//    2. The message data must not be cached, such as putting it into channel.
 func (ws *Websocket) Run(handle func(msgType int, message []byte)) error {
 	for {
 		messages, err := ws.RecvMsg()
@@ -388,7 +388,7 @@ func (ws *Websocket) errClose(code int, reason string) error {
 //    1. If it returns an error, the underlying connection has been closed.
 //    2. It only returns the text or binary message, not the control message.
 //       So the message type be only MsgTypeText or MsgTypeBinary.
-//    3. The message data is not cached, such as putting it into channel.
+//    3. The message data must not be cached, such as putting it into channel.
 func (ws *Websocket) RecvMsg() (messages []Message, err error) {
 	frames, err := ws.recvFrames()
 	if err != nil {
