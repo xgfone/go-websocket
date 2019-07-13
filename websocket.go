@@ -495,6 +495,7 @@ func (ws *Websocket) recvFrames() (frames []frame, err error) {
 		}
 
 		// Read the message.
+		ws.SetReadDeadlineByDuration(ws.timeout)
 		if n, err = ws.conn.Read(ws.recvBytes); err != nil {
 			ws.close()
 			return nil, err
