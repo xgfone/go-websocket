@@ -31,7 +31,7 @@ func main() {
 	// Initialize the config.
 	var conf Config
 	gconf.RegisterStruct(&conf)
-	gconf.SetStringVersion("1.3.0")
+	gconf.SetStringVersion("1.5.0")
 	gconf.SetErrHandler(gconf.ErrorHandler(func(err error) { klog.Errorf("%s", err) }))
 	if err := gconf.AddAndParseOptFlag(gconf.Conf); err != nil {
 		klog.E(err).Errorf("failed to parse the cli flags")
