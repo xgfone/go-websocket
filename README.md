@@ -1,4 +1,4 @@
-# websocket
+# websocket [![GoDoc](https://godoc.org/github.com/xgfone/websocket?status.svg)](http://godoc.org/github.com/xgfone/ship) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/websocket/master/LICENSE)
 
 This is a websocket implementation, which is inspired by [websockify](https://github.com/novnc/websockify) and [websocket](https://github.com/gorilla/websocket).
 
@@ -13,11 +13,6 @@ It has no any dependencies.
 ```shell
 $ go get -u github.com/xgfone/websocket
 ```
-
-## API
-
-See [GoDoc](https://godoc.org/github.com/xgfone/websocket)
-
 
 ## VNC Proxy on WebSocket
 
