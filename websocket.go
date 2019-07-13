@@ -419,7 +419,7 @@ func (ws *Websocket) RecvMsg() (messages []Message, err error) {
 			}
 
 			ws.msgBuffer.Write(frame.payload)
-			if ws.msgBuffer.Len() > ws.maxMsgSize {
+			if ws.maxMsgSize > 0 && ws.msgBuffer.Len() > ws.maxMsgSize {
 				return nil, ws.errClose(CloseMessageTooBig, "The message is too big")
 			}
 
@@ -507,7 +507,7 @@ func (ws *Websocket) recvFrames() (frames []frame, err error) {
 		ws.recvBuffer.Write(ws.recvBytes[:n])
 
 		// Check the message is too big.
-		if _len := ws.recvBuffer.Len(); _len > ws.maxMsgSize {
+		if _len := ws.recvBuffer.Len(); ws.maxMsgSize > 0 && _len > ws.maxMsgSize {
 			ws.close()
 			return nil, fmt.Errorf("the received message is too big: %d", _len)
 		}
