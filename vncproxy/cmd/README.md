@@ -41,4 +41,4 @@ Usage of ./vncproxy:
         Print the version and exit. (default false)
 ```
 
-It will recognize the format of the configuration file appointed by `--config-file` by the extension name. If the configuration file is updated, it will be loaded automatically. See [`github.com/xgfone/gconf`](https://github.com/xgfone/gconf#use-the-config-file).
+It will recognize the format of the configuration file appointed by `--config-file` by the extension name. If the configuration file is updated, it will be reloaded automatically. See [`github.com/xgfone/gconf`](https://github.com/xgfone/gconf#use-the-config-file).
