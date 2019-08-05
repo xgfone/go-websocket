@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/xgfone/gconf"
@@ -14,17 +13,17 @@ import (
 
 // Config is used to configure the app.
 type Config struct {
-	LogFile  string `default:"" help:"The path of the log file."`
-	LogLevel string `default:"debug" help:"The level of logging, such as debug, info, etc."`
+	LogFile  gconf.StringOptField `default:"" help:"The path of the log file."`
+	LogLevel gconf.StringOptField `default:"debug" help:"The level of logging, such as debug, info, etc."`
 
-	ListenAddr  string `default:":5900" help:"The address that VNC proxy listens to."`
-	ManagerAddr string `default:"127.0.0.1:9999" help:"The address that the manager listens to."`
+	ListenAddr  gconf.StringOptField `default:":5900" help:"The address that VNC proxy listens to."`
+	ManagerAddr gconf.StringOptField `default:"127.0.0.1:9999" help:"The address that the manager listens to."`
 
-	KeyFile  string `default:"" help:"The path of the key file."`
-	CertFile string `default:"" help:"The path of cert file."`
-	RedisURL string `default:"redis://localhost:6379/0" help:"The url to connect to redis."`
+	KeyFile  gconf.StringOptField `default:"" help:"The path of the key file."`
+	CertFile gconf.StringOptField `default:"" help:"The path of cert file."`
+	RedisURL gconf.StringOptField `default:"redis://localhost:6379/0" help:"The url to connect to redis."`
 
-	Expiration time.Duration `default:"0s" help:"The expiration time of the token."`
+	Expiration gconf.DurationOptField `default:"0s" help:"The expiration time of the token."`
 }
 
 func main() {
@@ -38,7 +37,7 @@ func main() {
 		return
 	}
 
-	log, err := klog.NewSimpleLogger(conf.LogLevel, conf.LogFile, "100M", 100)
+	log, err := klog.NewSimpleLogger(conf.LogLevel.Get(), conf.LogFile.Get(), "100M", 100)
 	if err != nil {
 		klog.E(err).Errorf("failed to create log file")
 		return
@@ -47,9 +46,9 @@ func main() {
 	klog.Std = log
 
 	// Handle the redis client
-	redisOpt, err := redis.ParseURL(conf.RedisURL)
+	redisOpt, err := redis.ParseURL(conf.RedisURL.Get())
 	if err != nil {
-		log.K("url", conf.RedisURL).E(err).Errorf("can't parse redis URL")
+		log.K("url", conf.RedisURL.Get()).E(err).Errorf("can't parse redis URL")
 		return
 	}
 	redisClient := redis.NewClient(redisOpt)
@@ -89,12 +88,12 @@ func main() {
 		if token == "" || addr == "" {
 			return ctx.String(http.StatusBadRequest, "missing token or addr")
 		}
-		if err := redisClient.Set(token, addr, conf.Expiration).Err(); err != nil {
+		if err := redisClient.Set(token, addr, conf.Expiration.Get()).Err(); err != nil {
 			return ship.ErrInternalServerError.NewError(err)
 		}
 		return nil
 	})
 
-	go router2.Start(conf.ManagerAddr)
-	router1.Start(conf.ListenAddr, conf.CertFile, conf.KeyFile).Wait()
+	go router2.Start(conf.ManagerAddr.Get())
+	router1.Start(conf.ListenAddr.Get(), conf.CertFile.Get(), conf.KeyFile.Get()).Wait()
 }
