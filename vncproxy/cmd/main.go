@@ -17,7 +17,7 @@ type Config struct {
 	LogLevel gconf.StringOptField `default:"debug" help:"The level of logging, such as debug, info, etc."`
 
 	ListenAddr  gconf.StringOptField `default:":5900" help:"The address that VNC proxy listens to."`
-	ManagerAddr gconf.StringOptField `default:"127.0.0.1:9999" help:"The address that the manager listens to."`
+	ManagerAddr gconf.StringOptField `default:"" help:"The address that the manager listens to. It's disabled by default."`
 
 	KeyFile  gconf.StringOptField `default:"" help:"The path of the key file."`
 	CertFile gconf.StringOptField `default:"" help:"The path of cert file."`
@@ -94,6 +94,8 @@ func main() {
 		return nil
 	})
 
-	go router2.Start(conf.ManagerAddr.Get())
+	if managerAddr := conf.ManagerAddr.Get(); managerAddr != "" {
+		go router2.Start(managerAddr)
+	}
 	router1.Start(conf.ListenAddr.Get(), conf.CertFile.Get(), conf.KeyFile.Get()).Wait()
 }
