@@ -17,7 +17,7 @@ type Config struct {
 	LogLevel gconf.StringOptField `default:"debug" help:"The level of logging, such as debug, info, etc."`
 
 	ListenAddr  gconf.StringOptField `default:":5900" help:"The address that VNC proxy listens to."`
-	ManagerAddr gconf.StringOptField `default:"" help:"The address that the manager listens to. It's disabled by default."`
+	ManagerAddr gconf.StringOptField `default:"" help:"The address that the manager listens to. It is disabled by default."`
 
 	KeyFile  gconf.StringOptField `default:"" help:"The path of the key file."`
 	CertFile gconf.StringOptField `default:"" help:"The path of cert file."`

@@ -34,9 +34,11 @@ Usage of ./vncproxy:
   --loglevel string
         The level of logging, such as debug, info, etc. (default "debug")
   --manageraddr string
-        The address that the manager listens to. (default "127.0.0.1:9999")
+        The address that the manager listens to. It is disabled by default.
   --redisurl string
         The url to connect to redis. (default "redis://localhost:6379/0")
   --version bool
         Print the version and exit. (default false)
 ```
+
+It will recognize the format of the configuration file appointed by `--config-file` by the extension name. If the configuration file is updated, it will be loaded automatically. See [`github.com/xgfone/gconf`](https://github.com/xgfone/gconf#use-the-config-file).
