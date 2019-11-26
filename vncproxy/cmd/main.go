@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-redis/redis"
-	"github.com/xgfone/gconf"
-	"github.com/xgfone/klog"
-	"github.com/xgfone/ship"
+	"github.com/xgfone/gconf/v4"
+	"github.com/xgfone/klog/v2"
+	"github.com/xgfone/ship/v2"
 	"github.com/xgfone/websocket/vncproxy"
 )
 
@@ -33,22 +32,23 @@ func main() {
 	gconf.SetStringVersion("1.5.0")
 	gconf.SetErrHandler(gconf.ErrorHandler(func(err error) { klog.Errorf("%s", err) }))
 	if err := gconf.AddAndParseOptFlag(gconf.Conf); err != nil {
-		klog.E(err).Errorf("failed to parse the cli flags")
+		klog.Error("failed to parse the cli flags", klog.E(err))
 		return
 	}
 
-	log, err := klog.NewSimpleLogger(conf.LogLevel.Get(), conf.LogFile.Get(), "100M", 100)
+	wc, err := klog.FileWriter(conf.LogFile.Get(), "100M", 100)
 	if err != nil {
-		klog.E(err).Errorf("failed to create log file")
+		klog.Error("failed to create log file", klog.E(err))
 		return
 	}
-	defer log.GetWriter().Close()
-	klog.Std = log
+	defer wc.Close()
+	klog.GetEncoder().SetWriter(wc)
+	klog.SetLevel(klog.NameToLevel(conf.LogLevel.Get()))
 
 	// Handle the redis client
 	redisOpt, err := redis.ParseURL(conf.RedisURL.Get())
 	if err != nil {
-		log.K("url", conf.RedisURL.Get()).E(err).Errorf("can't parse redis URL")
+		klog.Error("can't parse redis URL", klog.F("url", conf.RedisURL.Get()), klog.E(err))
 		return
 	}
 	redisClient := redis.NewClient(redisOpt)
@@ -60,7 +60,7 @@ func main() {
 			if vs := r.URL.Query()["token"]; len(vs) > 0 {
 				token, err := redisClient.Get(vs[0]).Result()
 				if err != nil && err != redis.Nil {
-					log.E(err).Errorf("redis GET error")
+					klog.Error("redis GET error", klog.E(err))
 				}
 				return token, nil
 			}
@@ -68,25 +68,26 @@ func main() {
 		},
 	})
 
-	opts := []ship.Option{
-		ship.SetName("VNC Proxy"),
-		ship.SetLogger(klog.ToFmtLoggerError(log)),
-	}
-	router1 := ship.New(opts...)
+	router1 := ship.New()
+	router1.Runner.Name = "VNC Proxy"
+	router1.SetLogger(klog.ToFmtLogger(klog.GetDefaultLogger()))
 	router1.Route("/*").GET(func(ctx *ship.Context) error {
 		handler.ServeHTTP(ctx.Response(), ctx.Request())
 		return nil
 	})
 
-	router2 := router1.Clone("VNC Manager").Link(router1)
-	router2.Route("/connections").GET(func(ctx *ship.Context) error {
-		return ctx.String(http.StatusOK, fmt.Sprintf("%d", handler.Connections()))
+	router2 := router1.Clone()
+	router2.Runner.Name = "VNC Manager"
+	router1.RegisterOnShutdown(router2.Stop)
+	router2.RegisterOnShutdown(router1.Stop)
+	router2.Route("/connections").GET(func(c *ship.Context) error {
+		return c.Text(http.StatusOK, "%d", handler.Connections())
 	})
 	router2.Route("/token").POST(func(ctx *ship.Context) error {
 		token := ctx.QueryParam("token")
 		addr := ctx.QueryParam("addr")
 		if token == "" || addr == "" {
-			return ctx.String(http.StatusBadRequest, "missing token or addr")
+			return ship.ErrBadRequest.NewMsg("missing token or addr")
 		}
 		if err := redisClient.Set(token, addr, conf.Expiration.Get()).Err(); err != nil {
 			return ship.ErrInternalServerError.NewError(err)

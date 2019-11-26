@@ -7,6 +7,6 @@ github.com/hsiafan/httpdump v0.0.0-20190426022335-bbebf055eca2/go.mod h1:GMQEFSd
 github.com/hsiafan/vlog v0.3.2/go.mod h1:jX1zDEGZAl4cuEOL3IwL0FrwQNpZXWxIpcBm1uqlvrQ=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.2.1/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
-github.com/xgfone/klog v1.6.1 h1:3ZpqmQO4M6gvWFQBmA9zUu7NSOQLwTNODko/YJmtYFs=
-github.com/xgfone/klog v1.6.1/go.mod h1:oantaT1HNxrNmaEAK1FWhheosvuCvzJyVkFwXUZ3bcY=
+github.com/xgfone/klog/v2 v2.2.0 h1:G9FBDCIJI8ZgG0mZyEWCnhoBsMJml1Al2p5zLgVXcuk=
+github.com/xgfone/klog/v2 v2.2.0/go.mod h1:8OQlQx2PfS5GN+aJKlsVJDqRsQ9tSd0lKj2dRTaR1+o=
 golang.org/x/text v0.0.0-20171214130843-f21a4dfb5e38/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
