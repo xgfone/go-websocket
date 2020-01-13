@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	log "github.com/xgfone/klog/v2"
+	log "github.com/xgfone/klog/v3"
 	"github.com/xgfone/websocket"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/xgfone/gconf/v4"
-	"github.com/xgfone/klog/v2"
+	"github.com/xgfone/klog/v3"
 	"github.com/xgfone/ship/v2"
 	"github.com/xgfone/websocket/vncproxy"
 )

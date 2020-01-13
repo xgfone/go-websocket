@@ -31,10 +31,10 @@ github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijb
 github.com/xgfone/gconf/v4 v4.2.0 h1:jHwckmRYK28idxiW2NVwps/7i0ghQcCchmShWhw5rl4=
 github.com/xgfone/gconf/v4 v4.2.0/go.mod h1:WDzOSr2uZO8+tNUt9xcL+uWhjZMjKAnt4BUuKNFM1K4=
 github.com/xgfone/go-tools/v6 v6.0.0/go.mod h1:EMuga8l5Q0i8LJIAL5QEqx9O1HvhX6QsJjvsnW5r8rk=
-github.com/xgfone/klog/v2 v2.2.0 h1:G9FBDCIJI8ZgG0mZyEWCnhoBsMJml1Al2p5zLgVXcuk=
-github.com/xgfone/klog/v2 v2.2.0/go.mod h1:8OQlQx2PfS5GN+aJKlsVJDqRsQ9tSd0lKj2dRTaR1+o=
-github.com/xgfone/ship/v2 v2.1.0 h1:jUMwiFprosGpLQGPnwXTBj1p1tUs7YAjg1da7PZJl+k=
-github.com/xgfone/ship/v2 v2.1.0/go.mod h1:F7cZagnADkJ+J+p/OOTQFrlpnM4OGe6qO6QbD1mBK1A=
+github.com/xgfone/klog/v3 v3.0.0 h1:OaSInrCGXE/n+MVrhlW9jmspsNNVsMNofRmVou6sV6E=
+github.com/xgfone/klog/v3 v3.0.0/go.mod h1:8B/rSmaBnIAHaB4pA5aGrMJul/3ZHjD/3VX933wfQnE=
+github.com/xgfone/ship/v2 v2.1.1 h1:PFnbu+lr5QBerjSJpp8Vg+Gc35RJEZn834jwC3zMKBs=
+github.com/xgfone/ship/v2 v2.1.1/go.mod h1:F7cZagnADkJ+J+p/OOTQFrlpnM4OGe6qO6QbD1mBK1A=
 golang.org/x/net v0.0.0-20180906233101-161cd47e91fd h1:nTDtHvHSdCn1m6ITfMRqtOd/9+7a3s8RBNOZ3eYZzJA=
 golang.org/x/net v0.0.0-20180906233101-161cd47e91fd/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f h1:wMNYb4v58l5UBM7MYRLPG6ZhfOqbKu7X5eyFl8ZhKvA=
