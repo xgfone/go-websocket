@@ -31,11 +31,11 @@ func main() {
 	gconf.RegisterStruct(&conf)
 	gconf.SetStringVersion("1.5.0")
 	gconf.SetErrHandler(gconf.ErrorHandler(func(err error) { klog.Errorf("%s", err) }))
-	if err := gconf.AddAndParseOptFlag(gconf.Conf); err != nil {
-		klog.Error("failed to parse the cli flags", klog.E(err))
-		return
-	}
+	gconf.AddAndParseOptFlag(gconf.Conf)
+	gconf.LoadSource(gconf.NewFlagSource())
+	gconf.LoadSource(gconf.NewFileSource(gconf.GetString(gconf.ConfigFileOpt.Name)))
 
+	// Initialize the logging.
 	wc, err := klog.FileWriter(conf.LogFile.Get(), "100M", 100)
 	if err != nil {
 		klog.Error("failed to create log file", klog.E(err))
@@ -44,8 +44,9 @@ func main() {
 	defer wc.Close()
 	klog.GetEncoder().SetWriter(wc)
 	klog.SetLevel(klog.NameToLevel(conf.LogLevel.Get()))
+	logger := klog.ToFmtLogger(klog.GetDefaultLogger())
 
-	// Handle the redis client
+	// Handle the redis client.
 	redisOpt, err := redis.ParseURL(conf.RedisURL.Get())
 	if err != nil {
 		klog.Error("can't parse redis URL", klog.F("url", conf.RedisURL.Get()), klog.E(err))
@@ -55,6 +56,7 @@ func main() {
 	defer redisClient.Close()
 
 	handler := vncproxy.NewWebsocketVncProxyHandler(vncproxy.ProxyConfig{
+		Logger:      logger,
 		CheckOrigin: func(r *http.Request) bool { return true },
 		GetBackend: func(r *http.Request) (string, error) {
 			if vs := r.URL.Query()["token"]; len(vs) > 0 {
@@ -70,7 +72,7 @@ func main() {
 
 	router1 := ship.New()
 	router1.Runner.Name = "VNC Proxy"
-	router1.SetLogger(klog.ToFmtLogger(klog.GetDefaultLogger()))
+	router1.SetLogger(logger)
 	router1.Route("/*").GET(func(ctx *ship.Context) error {
 		handler.ServeHTTP(ctx.Response(), ctx.Request())
 		return nil
