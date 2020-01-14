@@ -9,33 +9,53 @@ import (
 	"sync/atomic"
 	"time"
 
-	log "github.com/xgfone/klog/v3"
 	"github.com/xgfone/websocket"
 )
 
 type peer struct {
+	logger Logger
 	source *websocket.Websocket
 	target *net.TCPConn
 	closed int32
 	start  time.Time
 }
 
-func (p *peer) Close() {
+func (p *peer) Close(addr string, err error) {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
-		p.source.SendClose(websocket.CloseNormalClosure, "close")
 		p.target.Close()
-		log.Info("close VNC", log.F("source", p.source.RemoteAddr().String()),
-			log.F("target", p.target.RemoteAddr().String()),
-			log.F("duration", time.Now().Sub(p.start).String()))
+		p.source.SendClose(websocket.CloseNormalClosure, "close")
+		p.logger.Infof("close VNC: source=%s, target=%s, duration=%s, from=%s, err=%s",
+			p.source.RemoteAddr().String(), p.target.RemoteAddr().String(),
+			time.Now().Sub(p.start).String(), addr, err.Error())
 	}
 }
 
-func newPeer(source *websocket.Websocket, target *net.TCPConn, now time.Time) *peer {
-	return &peer{source: source, target: target, start: now}
+func newPeer(source *websocket.Websocket, target *net.TCPConn, now time.Time, logger Logger) *peer {
+	return &peer{source: source, target: target, start: now, logger: logger}
 }
+
+// Logger represents a logger interface.
+type Logger interface {
+	Debugf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+}
+
+// NewNoopLogger returns a Noop Logger, which does nothing.
+func NewNoopLogger() Logger { return noopLogger{} }
+
+type noopLogger struct{}
+
+func (n noopLogger) Debugf(format string, args ...interface{}) {}
+func (n noopLogger) Infof(format string, args ...interface{})  {}
+func (n noopLogger) Warnf(format string, args ...interface{})  {}
+func (n noopLogger) Errorf(format string, args ...interface{}) {}
 
 // ProxyConfig is used to configure WsVncProxyHandler.
 type ProxyConfig struct {
+	Logger Logger
+
 	// MaxMsgSize is used to control the size of the websocket message.
 	// The default is 64KB.
 	MaxMsgSize int
@@ -62,6 +82,7 @@ type WebsocketVncProxyHandler struct {
 	peers      map[*peer]struct{}
 	lock       sync.RWMutex
 
+	logger     Logger
 	timeout    time.Duration
 	upgrader   websocket.Upgrader
 	getBackend func(*http.Request) (string, error)
@@ -80,9 +101,13 @@ func NewWebsocketVncProxyHandler(conf ProxyConfig) *WebsocketVncProxyHandler {
 	if conf.Timeout <= 0 {
 		conf.Timeout = time.Second * 10
 	}
+	if conf.Logger == nil {
+		conf.Logger = NewNoopLogger()
+	}
 
 	handler := &WebsocketVncProxyHandler{
 		peers:      make(map[*peer]struct{}, 1024),
+		logger:     conf.Logger,
 		timeout:    conf.Timeout,
 		getBackend: conf.GetBackend,
 		upgrader: websocket.Upgrader{
@@ -147,44 +172,43 @@ func (h *WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	if strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
 		w.Header().Set("Connection", "close")
-		log.Error("no websocket", log.F("client", r.RemoteAddr), log.F("upgrade", r.Header.Get("Upgrade")))
+		h.logger.Errorf("not websocket: client=%s, upgrade=%s", r.RemoteAddr, r.Header.Get("Upgrade"))
 		return
 	}
 
 	backend, err := h.getBackend(r)
 	if err != nil {
 		w.Header().Set("Connection", "close")
-		log.Error("can't get backend", log.F("client", r.RemoteAddr), log.F("url", r.RequestURI), log.E(err))
+		h.logger.Errorf("cannot get backend: client=%s, url=%s, err=%s", r.RemoteAddr, r.RequestURI, err)
 		return
 	} else if backend == "" {
 		w.Header().Set("Connection", "close")
-		log.Error("can't get backend", log.F("client", r.RemoteAddr), log.F("url", r.RequestURI))
+		h.logger.Errorf("no backend: client=%s, url=%s", r.RemoteAddr, r.RequestURI)
 		return
 	}
 
 	ws, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.Header().Set("Connection", "close")
-		log.Error("can't update to websocket", log.F("client", r.RemoteAddr), log.E(err))
+		h.logger.Errorf("cannot upgrade to websocket: client=%s, err=%s", r.RemoteAddr, err)
 		return
 	}
 
-	log.Info("new websocket connection", log.F("client", r.RemoteAddr), log.F("url", r.RequestURI))
-	log.Info("connecting to the backend VNC", log.F("addr", backend))
+	h.logger.Infof("connecting to the VNC backend '%s' for '%s', url=%s", backend, r.RemoteAddr, r.RequestURI)
 
 	c, err := net.DialTimeout("tcp", backend, h.timeout)
 	if err != nil {
-		log.Error("can't connect to VNC", log.F("addr", backend), log.E(err))
+		h.logger.Errorf("cannot connect to the VNC backend '%s': %s", backend, err)
 		ws.SendClose(websocket.CloseAbnormalClosure, "cannot connect to the backend")
 		return
 	}
-	log.Info("connected to VNC", log.F("source", r.RemoteAddr), log.F("target", backend),
-		log.F("cost", time.Now().Sub(starttime).String()))
+	h.logger.Infof("connected to the VNC backend '%s' for '%s', cost=%s", backend,
+		r.RemoteAddr, time.Now().Sub(starttime).String())
 
 	h.incConnection()
 	defer h.decConnection()
 
-	peer := newPeer(ws, c.(*net.TCPConn), starttime)
+	peer := newPeer(ws, c.(*net.TCPConn), starttime, h.logger)
 	h.addPeer(peer)
 	defer h.delPeer(peer)
 
@@ -196,16 +220,15 @@ func (h *WebsocketVncProxyHandler) readSource(p *peer) {
 	for {
 		msgs, err := p.source.RecvMsg()
 		if err != nil {
-			log.Error("can't read from websocket", log.F("addr", p.source.RemoteAddr().String()), log.E(err))
-			p.Close()
+			p.Close(p.source.RemoteAddr().String(), err)
 			return
 		}
 
 		for _, msg := range msgs {
-			_, err := p.target.Write(msg.Data)
-			if err != nil {
-				log.Error("can't send data to VNC", log.F("addr", p.target.RemoteAddr().String()), log.E(err))
-			}
+			_, err = p.target.Write(msg.Data)
+			// if err != nil {
+			// 	p.Close(p.target.RemoteAddr().String(), err)
+			// }
 		}
 	}
 }
@@ -215,14 +238,12 @@ func (h *WebsocketVncProxyHandler) readTarget(p *peer) {
 		buf := make([]byte, 2048)
 		n, err := p.target.Read(buf)
 		if err != nil {
-			log.Error("can't read from VNC", log.F("addr", p.target.RemoteAddr().String()), log.E(err))
-			p.Close()
+			p.Close(p.target.RemoteAddr().String(), err)
 			return
 		}
 
 		if err = p.source.SendBinaryMsg(buf[:n]); err != nil {
-			log.Error("can't send data to websocket", log.F("addr", p.source.RemoteAddr().String()), log.E(err))
-			p.Close()
+			p.Close(p.source.RemoteAddr().String(), err)
 			return
 		}
 	}
