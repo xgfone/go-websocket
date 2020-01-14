@@ -1,4 +1,4 @@
-module github.com/xgfone/websocket/vncproxy/cmd
+module github.com/xgfone/websocket/vncproxy/vncproxy
 
 require (
 	github.com/go-redis/redis v6.6.0+incompatible
