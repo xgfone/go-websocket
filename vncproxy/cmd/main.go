@@ -29,7 +29,7 @@ func main() {
 	// Initialize the config.
 	var conf Config
 	gconf.RegisterStruct(&conf)
-	gconf.SetStringVersion("1.5.0")
+	gconf.SetStringVersion("1.8.0")
 	gconf.SetErrHandler(gconf.ErrorHandler(func(err error) { klog.Errorf("%s", err) }))
 	gconf.AddAndParseOptFlag(gconf.Conf)
 	gconf.LoadSource(gconf.NewFlagSource())
