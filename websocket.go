@@ -71,16 +71,15 @@ type Websocket struct {
 
 	timeout     time.Duration
 	isClient    bool
+	bufferSize  int
 	maxMsgSize  int
 	subprotocol string
 	closeNotice func()
 	handlePing  func(*Websocket, []byte)
 	handlePong  func(*Websocket, []byte)
 
-	reset      bool // If true, it will reset recvBuffer when receiving frames.
 	opcode     int
 	closed     int32
-	recvBytes  []byte
 	recvBuffer *bytes.Buffer
 	msgBuffer  *bytes.Buffer
 }
@@ -226,7 +225,7 @@ func (ws *Websocket) SetMaxMsgSize(size int) *Websocket {
 func (ws *Websocket) SetBufferSize(size int) *Websocket {
 	if size > 0 {
 		size += 16
-		ws.recvBytes = make([]byte, size)
+		ws.bufferSize = size
 		ws.recvBuffer = bytes.NewBuffer(nil)
 		ws.recvBuffer.Grow(size)
 		ws.msgBuffer = bytes.NewBuffer(nil)
@@ -495,17 +494,13 @@ func (ws *Websocket) recvFrames() (frames []frame, err error) {
 		}
 
 		// Read the message.
+		recvbuf := make([]byte, ws.bufferSize)
 		ws.SetReadDeadlineByDuration(ws.timeout)
-		if n, err = ws.conn.Read(ws.recvBytes); err != nil {
+		if n, err = ws.conn.Read(recvbuf); err != nil {
 			ws.close()
 			return nil, err
 		}
-
-		if ws.reset {
-			ws.recvBuffer.Reset()
-			ws.reset = false
-		}
-		ws.recvBuffer.Write(ws.recvBytes[:n])
+		ws.recvBuffer.Write(recvbuf[:n])
 
 		// Check the message is too big.
 		if _len := ws.recvBuffer.Len(); ws.maxMsgSize > 0 && _len > ws.maxMsgSize {
@@ -520,27 +515,24 @@ func (ws *Websocket) recvFrames() (frames []frame, err error) {
 			if decodeHyBi(&frame, buffer) {
 				frames = append(frames, frame)
 				buffer = buffer[frame.length:]
-			} else if len(frames) == 0 {
+			} else {
 				break
 			}
 		}
 
 		if len(frames) > 0 {
-			// Cache the rest data.
-			if _len := len(buffer); _len > 0 {
-				// Copy the frame data, don't use the buffer cache
-				for i := range frames {
-					data := make([]byte, len(frames[i].payload))
-					copy(data, frames[i].payload)
-					frames[i].payload = data
-				}
-
-				copy(ws.recvBytes, buffer)
-				ws.recvBuffer.Reset()
-				ws.recvBuffer.Write(ws.recvBytes[:_len])
-			} else {
-				ws.reset = true
+			// Copy the frame data, don't use the buffer cache
+			for i := range frames {
+				data := make([]byte, len(frames[i].payload))
+				copy(data, frames[i].payload)
+				frames[i].payload = data
 			}
+
+			ws.recvBuffer.Reset()
+			if len(buffer) > 0 {
+				ws.recvBuffer.Write(buffer)
+			}
+
 			return
 		}
 	}
