@@ -1,8 +1,2 @@
-github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/google/gopacket v1.1.16/go.mod h1:UCLx9mCmAwsVbn6qQl1WIEt2SO7Nd2fD0th1TBAsqBw=
-github.com/hsiafan/httpdump v0.0.0-20190426022335-bbebf055eca2 h1:U5swyoKynmobhAqcQoGdWBPYe/6uY0mxzRnMtKol3EY=
-github.com/hsiafan/httpdump v0.0.0-20190426022335-bbebf055eca2/go.mod h1:GMQEFSdEuwxGbJygMNTlW6vOSvRKevIxD2J2azkbFZc=
-github.com/hsiafan/vlog v0.3.2/go.mod h1:jX1zDEGZAl4cuEOL3IwL0FrwQNpZXWxIpcBm1uqlvrQ=
-github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/stretchr/testify v1.2.1/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
-golang.org/x/text v0.0.0-20171214130843-f21a4dfb5e38/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+github.com/hsiafan/httpdump v0.0.0-20200320035741-5d156193c1a5 h1:NUw7V1uLJzyouyshsTJxP8y+ogmjxbjyDyE5yIVjUmU=
+github.com/hsiafan/httpdump v0.0.0-20200320035741-5d156193c1a5/go.mod h1:hdgHI0QCnpChsHrXi0Y4clf6wNtHFl6IoGgqoHwkTKI=

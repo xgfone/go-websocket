@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v7"
 	"github.com/xgfone/gconf/v4"
 	"github.com/xgfone/klog/v3"
 	"github.com/xgfone/ship/v2"

@@ -26,7 +26,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xgfone/ship"
+	"github.com/xgfone/ship/v2"
 	"github.com/xgfone/websocket"
 )
 
