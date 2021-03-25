@@ -24,9 +24,9 @@ func (p *peer) Close(addr string, err error) {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
 		p.target.Close()
 		p.source.SendClose(websocket.CloseNormalClosure, "close")
-		p.logger.Infof("close VNC: source=%s, target=%s, duration=%s, from=%s, err=%s",
+		p.logger.Infof("close VNC: source=%s, target=%s, duration=%s, from=%s, err=%v",
 			p.source.RemoteAddr().String(), p.target.RemoteAddr().String(),
-			time.Since(p.start).String(), addr, err.Error())
+			time.Since(p.start).String(), addr, err)
 	}
 }
 
@@ -83,6 +83,7 @@ type ProxyConfig struct {
 type WebsocketVncProxyHandler struct {
 	connection int64
 	peers      map[*peer]struct{}
+	exit       chan struct{}
 	lock       sync.RWMutex
 
 	logger     Logger
@@ -110,6 +111,7 @@ func NewWebsocketVncProxyHandler(conf ProxyConfig) *WebsocketVncProxyHandler {
 	}
 
 	handler := &WebsocketVncProxyHandler{
+		exit:       make(chan struct{}),
 		peers:      make(map[*peer]struct{}, 1024),
 		logger:     conf.Logger,
 		timeout:    conf.Timeout,
@@ -163,9 +165,20 @@ func (h *WebsocketVncProxyHandler) tick() {
 				peer.source.SendPing(nil)
 			}
 			h.lock.RUnlock()
+		case <-h.exit:
+			h.lock.Lock()
+			for peer := range h.peers {
+				peer.Close("", nil)
+				delete(h.peers, peer)
+			}
+			h.lock.Unlock()
+			return
 		}
 	}
 }
+
+// Close implements the interface io.Closer.
+func (h *WebsocketVncProxyHandler) Close() error { close(h.exit); return nil }
 
 // ServeHTTP implements http.Handler, but it won't return until the connection
 // has closed.
