@@ -68,7 +68,7 @@ type Upgrader struct {
 func (u Upgrader) handleError(w http.ResponseWriter, r *http.Request, code int,
 	reason string) (*Websocket, error) {
 	w.WriteHeader(code)
-	fmt.Fprintf(w, reason)
+	fmt.Fprint(w, reason)
 	return nil, errors.New(reason)
 }
 

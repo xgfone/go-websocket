@@ -13,8 +13,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/hsiafan/httpdump/httpport"
 )
 
 // ClientOption is used to configure the client websocket.
@@ -170,7 +168,7 @@ func NewClientWebsocket(wsurl string, option ...ClientOption) (ws *Websocket, er
 
 	// Handle the websocket handshake response
 	reader := bufio.NewReaderSize(conn, opt.MaxLine)
-	resp, err := httpport.ReadResponse(reader, nil)
+	resp, err := http.ReadResponse(reader, nil)
 	if err != nil {
 		return nil, err
 	}
