@@ -26,7 +26,7 @@ func (p *peer) Close(addr string, err error) {
 		p.source.SendClose(websocket.CloseNormalClosure, "close")
 		p.logger.Infof("close VNC: source=%s, target=%s, duration=%s, from=%s, err=%s",
 			p.source.RemoteAddr().String(), p.target.RemoteAddr().String(),
-			time.Now().Sub(p.start).String(), addr, err.Error())
+			time.Since(p.start).String(), addr, err.Error())
 	}
 }
 
@@ -64,6 +64,9 @@ type ProxyConfig struct {
 	// The default is 10s.
 	Timeout time.Duration
 
+	// UpgradeHeader is the additional headers to upgrade the websocket.
+	UpgradeHeader http.Header
+
 	// Check whether the origin is allowed.
 	//
 	// The default is that the origin is allowed only when the header Origin
@@ -84,6 +87,7 @@ type WebsocketVncProxyHandler struct {
 
 	logger     Logger
 	timeout    time.Duration
+	upheader   http.Header
 	upgrader   websocket.Upgrader
 	getBackend func(*http.Request) (string, error)
 }
@@ -110,6 +114,7 @@ func NewWebsocketVncProxyHandler(conf ProxyConfig) *WebsocketVncProxyHandler {
 		logger:     conf.Logger,
 		timeout:    conf.Timeout,
 		getBackend: conf.GetBackend,
+		upheader:   conf.UpgradeHeader,
 		upgrader: websocket.Upgrader{
 			MaxMsgSize:   conf.MaxMsgSize,
 			Timeout:      conf.Timeout,
@@ -187,7 +192,7 @@ func (h *WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ws, err := h.upgrader.Upgrade(w, r, nil)
+	ws, err := h.upgrader.Upgrade(w, r, h.upheader)
 	if err != nil {
 		w.Header().Set("Connection", "close")
 		h.logger.Errorf("cannot upgrade to websocket: client=%s, err=%s", r.RemoteAddr, err)
@@ -202,8 +207,8 @@ func (h *WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		ws.SendClose(websocket.CloseAbnormalClosure, "cannot connect to the backend")
 		return
 	}
-	h.logger.Infof("connected to the VNC backend '%s' for '%s', cost=%s", backend,
-		r.RemoteAddr, time.Now().Sub(starttime).String())
+	h.logger.Infof("connected to the VNC backend '%s' for '%s', cost=%s",
+		backend, r.RemoteAddr, time.Since(starttime).String())
 
 	h.incConnection()
 	defer h.decConnection()
@@ -225,10 +230,9 @@ func (h *WebsocketVncProxyHandler) readSource(p *peer) {
 		}
 
 		for _, msg := range msgs {
-			_, err = p.target.Write(msg.Data)
-			// if err != nil {
-			// 	p.Close(p.target.RemoteAddr().String(), err)
-			// }
+			if _, err = p.target.Write(msg.Data); err != nil {
+				p.Close(p.target.RemoteAddr().String(), err)
+			}
 		}
 	}
 }
