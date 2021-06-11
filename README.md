@@ -1,6 +1,6 @@
-# websocket [![GoDoc](https://godoc.org/github.com/xgfone/websocket?status.svg)](http://godoc.org/github.com/xgfone/ship) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/websocket/master/LICENSE)
+# websocket [![GoDoc](https://pkg.go.dev/badge/github.com/xgfone/websocket)](https://pkg.go.dev/github.com/xgfone/websocket) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/websocket/master/LICENSE)
 
-This is a websocket implementation, which is inspired by [websockify](https://github.com/novnc/websockify) and [websocket](https://github.com/gorilla/websocket).
+This is a websocket implementation supporting `Go1.7+`, which is inspired by [websockify](https://github.com/novnc/websockify) and [websocket](https://github.com/gorilla/websocket).
 
 #### Difference from `gorilla/websocket`
 - `gorilla/websocket` only has a goroutine to read from websocket and a goroutine to write to websocket, that's, read or write can be done concurrently.
