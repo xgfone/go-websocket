@@ -23,36 +23,38 @@ The sub-package [vncproxy](https://github.com/xgfone/websocket/tree/master/vncpr
 package main
 
 import (
+	"log"
 	"net/http"
 	"time"
 
-	"github.com/xgfone/ship/v2"
 	"github.com/xgfone/websocket"
 )
 
-func main() {
-	upgrader := websocket.Upgrader{
-		MaxMsgSize:  1024,
-		Timeout:     time.Second * 30,
-		CheckOrigin: func(r *http.Request) bool { return true },
+var upgrader = websocket.Upgrader{
+	MaxMsgSize:  1024,
+	Timeout:     time.Second * 30,
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+func websocketHandler(rw http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(rw, r, nil)
+	if err != nil {
+		log.Printf("failed to upgrade to websocket: %s\n", err)
+		return
 	}
 
-	app := ship.New()
-	app.R("/").GET(func(ctx *ship.Context) error {
-		ws, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
-		if err != nil {
-			return err
+	ws.Run(func(msgType int, message []byte) {
+		switch msgType {
+		case websocket.MsgTypeBinary:
+			ws.SendBinaryMsg(message)
+		case websocket.MsgTypeText:
+			ws.SendTextMsg(message)
 		}
-		return ws.Run(func(msgType int, message []byte) {
-			switch msgType {
-			case websocket.MsgTypeBinary:
-				ws.SendBinaryMsg(message)
-			case websocket.MsgTypeText:
-				ws.SendTextMsg(message)
-			}
-		})
 	})
-	app.Start(":80").Wait()
+}
+
+func main() {
+	http.ListenAndServe(":80", http.HandlerFunc(websocketHandler))
 }
 ```
 
