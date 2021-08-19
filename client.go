@@ -66,6 +66,14 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+func getHost(hostport, defaultPort string) string {
+	_, _, err := net.SplitHostPort(hostport)
+	if err != nil && strings.Contains(err.Error(), "missing port") {
+		return net.JoinHostPort(hostport, defaultPort)
+	}
+	return hostport
+}
+
 // NewClientWebsocket returns a new client websocket to connect to wsurl.
 func NewClientWebsocket(wsurl string, option ...ClientOption) (ws *Websocket, err error) {
 	u, err := url.Parse(wsurl)
@@ -85,17 +93,17 @@ func NewClientWebsocket(wsurl string, option ...ClientOption) (ws *Websocket, er
 	switch u.Scheme {
 	case "ws":
 		if opt.Dial != nil {
-			conn, err = opt.Dial(u.Host)
+			conn, err = opt.Dial(getHost(u.Host, "80"))
 		} else {
-			conn, err = defaultDial(u.Host)
+			conn, err = defaultDial(getHost(u.Host, "80"))
 		}
 	case "wss":
 		if opt.DialTLS != nil {
 			conn, err = opt.DialTLS(u.Host)
 		} else if opt.Config != nil {
-			conn, err = tls.Dial("tcp", u.Host, opt.Config)
+			conn, err = tls.Dial("tcp", getHost(u.Host, "443"), opt.Config)
 		} else {
-			conn, err = tls.Dial("tcp", u.Host, &tls.Config{})
+			conn, err = tls.Dial("tcp", getHost(u.Host, "443"), &tls.Config{})
 		}
 	default:
 		return nil, fmt.Errorf("the websocket scheme must be ws or wss")
