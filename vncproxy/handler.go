@@ -28,7 +28,8 @@ import (
 )
 
 type peer struct {
-	logger Logger
+	ProxyConfig
+
 	source *websocket.Websocket
 	target *net.TCPConn
 	closed int32
@@ -39,37 +40,20 @@ func (p *peer) Close(addr string, err error) {
 	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
 		p.target.Close()
 		p.source.SendClose(websocket.CloseNormalClosure, "close")
-		p.logger.Infof("close VNC: source=%s, target=%s, duration=%s, from=%s, err=%v",
+		p.infof("close VNC: source=%s, target=%s, duration=%s, from=%s, err=%v",
 			p.source.RemoteAddr().String(), p.target.RemoteAddr().String(),
 			time.Since(p.start).String(), addr, err)
 	}
 }
 
-func newPeer(source *websocket.Websocket, target *net.TCPConn, now time.Time, logger Logger) *peer {
-	return &peer{source: source, target: target, start: now, logger: logger}
+func newPeer(source *websocket.Websocket, target *net.TCPConn, now time.Time, c ProxyConfig) *peer {
+	return &peer{source: source, target: target, start: now, ProxyConfig: c}
 }
-
-// Logger represents a logger interface.
-type Logger interface {
-	Debugf(format string, args ...interface{})
-	Infof(format string, args ...interface{})
-	Warnf(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
-}
-
-// NewNoopLogger returns a Noop Logger, which does nothing.
-func NewNoopLogger() Logger { return noopLogger{} }
-
-type noopLogger struct{}
-
-func (n noopLogger) Debugf(format string, args ...interface{}) {}
-func (n noopLogger) Infof(format string, args ...interface{})  {}
-func (n noopLogger) Warnf(format string, args ...interface{})  {}
-func (n noopLogger) Errorf(format string, args ...interface{}) {}
 
 // ProxyConfig is used to configure WsVncProxyHandler.
 type ProxyConfig struct {
-	Logger Logger
+	ErrorLog func(format string, args ...interface{})
+	InfoLog  func(format string, args ...interface{})
 
 	// MaxMsgSize is used to control the size of the websocket message.
 	// The default is 64KB.
@@ -94,6 +78,18 @@ type ProxyConfig struct {
 	GetBackend func(r *http.Request) (addr string, err error)
 }
 
+func (c ProxyConfig) errorf(format string, args ...interface{}) {
+	if c.ErrorLog != nil {
+		c.ErrorLog(format, args...)
+	}
+}
+
+func (c ProxyConfig) infof(format string, args ...interface{}) {
+	if c.InfoLog != nil {
+		c.InfoLog(format, args...)
+	}
+}
+
 // WebsocketVncProxyHandler is a VNC proxy handler based on websocket.
 type WebsocketVncProxyHandler struct {
 	connection int64
@@ -101,11 +97,8 @@ type WebsocketVncProxyHandler struct {
 	exit       chan struct{}
 	lock       sync.RWMutex
 
-	logger     Logger
-	timeout    time.Duration
-	upheader   http.Header
-	upgrader   websocket.Upgrader
-	getBackend func(*http.Request) (string, error)
+	conf     ProxyConfig
+	upgrader websocket.Upgrader
 }
 
 // NewWebsocketVncProxyHandler returns a new WebsocketVncProxyHandler.
@@ -121,17 +114,10 @@ func NewWebsocketVncProxyHandler(conf ProxyConfig) *WebsocketVncProxyHandler {
 	if conf.Timeout <= 0 {
 		conf.Timeout = time.Second * 10
 	}
-	if conf.Logger == nil {
-		conf.Logger = NewNoopLogger()
-	}
 
 	handler := &WebsocketVncProxyHandler{
-		exit:       make(chan struct{}),
-		peers:      make(map[*peer]struct{}, 1024),
-		logger:     conf.Logger,
-		timeout:    conf.Timeout,
-		getBackend: conf.GetBackend,
-		upheader:   conf.UpgradeHeader,
+		exit:  make(chan struct{}),
+		peers: make(map[*peer]struct{}, 1024),
 		upgrader: websocket.Upgrader{
 			MaxMsgSize:   conf.MaxMsgSize,
 			Timeout:      conf.Timeout,
@@ -169,7 +155,7 @@ func (h *WebsocketVncProxyHandler) delPeer(p *peer) {
 }
 
 func (h *WebsocketVncProxyHandler) tick() {
-	ticker := time.NewTicker(h.timeout * 8 / 10)
+	ticker := time.NewTicker(h.conf.Timeout * 8 / 10)
 	defer ticker.Stop()
 
 	for {
@@ -205,43 +191,43 @@ func (h *WebsocketVncProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	if strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
 		w.Header().Set("Connection", "close")
-		h.logger.Errorf("not websocket: client=%s, upgrade=%s", r.RemoteAddr, r.Header.Get("Upgrade"))
+		h.conf.errorf("not websocket: client=%s, upgrade=%s", r.RemoteAddr, r.Header.Get("Upgrade"))
 		return
 	}
 
-	backend, err := h.getBackend(r)
+	backend, err := h.conf.GetBackend(r)
 	if err != nil {
 		w.Header().Set("Connection", "close")
-		h.logger.Errorf("cannot get backend: client=%s, url=%s, err=%s", r.RemoteAddr, r.RequestURI, err)
+		h.conf.errorf("cannot get backend: client=%s, url=%s, err=%s", r.RemoteAddr, r.RequestURI, err)
 		return
 	} else if backend == "" {
 		w.Header().Set("Connection", "close")
-		h.logger.Errorf("no backend: client=%s, url=%s", r.RemoteAddr, r.RequestURI)
+		h.conf.errorf("no backend: client=%s, url=%s", r.RemoteAddr, r.RequestURI)
 		return
 	}
 
-	ws, err := h.upgrader.Upgrade(w, r, h.upheader)
+	ws, err := h.upgrader.Upgrade(w, r, h.conf.UpgradeHeader)
 	if err != nil {
 		w.Header().Set("Connection", "close")
-		h.logger.Errorf("cannot upgrade to websocket: client=%s, err=%s", r.RemoteAddr, err)
+		h.conf.errorf("cannot upgrade to websocket: client=%s, err=%s", r.RemoteAddr, err)
 		return
 	}
 
-	h.logger.Infof("connecting to the VNC backend '%s' for '%s', url=%s", backend, r.RemoteAddr, r.RequestURI)
+	h.conf.infof("connecting to the VNC backend '%s' for '%s', url=%s", backend, r.RemoteAddr, r.RequestURI)
 
-	c, err := net.DialTimeout("tcp", backend, h.timeout)
+	c, err := net.DialTimeout("tcp", backend, h.conf.Timeout)
 	if err != nil {
-		h.logger.Errorf("cannot connect to the VNC backend '%s': %s", backend, err)
+		h.conf.errorf("cannot connect to the VNC backend '%s': %s", backend, err)
 		ws.SendClose(websocket.CloseAbnormalClosure, "cannot connect to the backend")
 		return
 	}
-	h.logger.Infof("connected to the VNC backend '%s' for '%s', cost=%s",
+	h.conf.infof("connected to the VNC backend '%s' for '%s', cost=%s",
 		backend, r.RemoteAddr, time.Since(starttime).String())
 
 	h.incConnection()
 	defer h.decConnection()
 
-	peer := newPeer(ws, c.(*net.TCPConn), starttime, h.logger)
+	peer := newPeer(ws, c.(*net.TCPConn), starttime, h.conf)
 	h.addPeer(peer)
 	defer h.delPeer(peer)
 
