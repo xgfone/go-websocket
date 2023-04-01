@@ -1,4 +1,4 @@
-# websocket [![GoDoc](https://pkg.go.dev/badge/github.com/xgfone/websocket)](https://pkg.go.dev/github.com/xgfone/websocket) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/websocket/master/LICENSE)
+# websocket [![GoDoc](https://pkg.go.dev/badge/github.com/xgfone/go-websocket)](https://pkg.go.dev/github.com/xgfone/go-websocket) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-websocket/master/LICENSE)
 
 This is a websocket implementation supporting `Go1.7+`, which is inspired by [websockify](https://github.com/novnc/websockify) and [websocket](https://github.com/gorilla/websocket).
 
@@ -9,12 +9,12 @@ This is a websocket implementation supporting `Go1.7+`, which is inspired by [we
 ## Install
 
 ```shell
-$ go get -u github.com/xgfone/websocket
+$ go get -u github.com/xgfone/go-websocket
 ```
 
 ## VNC Proxy on WebSocket
 
-The sub-package [vncproxy](https://github.com/xgfone/websocket/tree/master/vncproxy) supplies a HTTP handler about VNC Proxy on Websocket.
+The sub-package [vncproxy](https://github.com/xgfone/go-websocket/tree/master/vncproxy) provides a HTTP handler about VNC Proxy on Websocket.
 
 ## Example
 
@@ -27,7 +27,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xgfone/websocket"
+	"github.com/xgfone/go-websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -66,7 +66,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xgfone/websocket"
+	"github.com/xgfone/go-websocket"
 )
 
 func main() {

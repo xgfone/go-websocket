@@ -1,3 +1,17 @@
+// Copyright 2023 xgfone
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package websocket is websocket library implemented by Go, which is inspired
 // by websockify in noVNC.
 package websocket
@@ -62,10 +76,10 @@ type Message struct {
 // Websocket implements a websocket interface.
 //
 // Notice:
-//   1. It does not support the extension.
-//   2. The sending functions SendXxx can be called concurrently with the
-//      unfragmented messages, but the receiving functions, RecvMsg or Run,
-//      cannot be done like that.
+//  1. It does not support the extension.
+//  2. The sending functions SendXxx can be called concurrently with the
+//     unfragmented messages, but the receiving functions, RecvMsg or Run,
+//     cannot be done like that.
 type Websocket struct {
 	conn net.Conn
 
@@ -362,8 +376,8 @@ func (ws *Websocket) sendMsg(msgType int, message []byte, _fin ...bool) (err err
 // When receiving a websocket message, it will handle it by calling handle().
 //
 // Notice:
-//    1. msgType be only MsgTypeText or MsgTypeBinary.
-//    2. The message data must not be cached, such as putting it into channel.
+//  1. msgType be only MsgTypeText or MsgTypeBinary.
+//  2. The message data must not be cached, such as putting it into channel.
 func (ws *Websocket) Run(handle func(msgType int, message []byte)) error {
 	for {
 		messages, err := ws.RecvMsg()
@@ -384,10 +398,10 @@ func (ws *Websocket) errClose(code int, reason string) error {
 // RecvMsg receives and returns the websocket message.
 //
 // Notice:
-//    1. If it returns an error, the underlying connection has been closed.
-//    2. It only returns the text or binary message, not the control message.
-//       So the message type be only MsgTypeText or MsgTypeBinary.
-//    3. The message data must not be cached, such as putting it into channel.
+//  1. If it returns an error, the underlying connection has been closed.
+//  2. It only returns the text or binary message, not the control message.
+//     So the message type be only MsgTypeText or MsgTypeBinary.
+//  3. The message data must not be cached, such as putting it into channel.
 func (ws *Websocket) RecvMsg() (messages []Message, err error) {
 	frames, err := ws.recvFrames()
 	if err != nil {
