@@ -116,6 +116,7 @@ func NewWebsocketVncProxyHandler(conf ProxyConfig) *WebsocketVncProxyHandler {
 	}
 
 	handler := &WebsocketVncProxyHandler{
+		conf:  conf,
 		exit:  make(chan struct{}),
 		peers: make(map[*peer]struct{}, 1024),
 		upgrader: websocket.Upgrader{
@@ -163,7 +164,7 @@ func (h *WebsocketVncProxyHandler) tick() {
 		case <-ticker.C:
 			h.lock.RLock()
 			for peer := range h.peers {
-				peer.source.SendPing(nil)
+				_ = peer.source.SendPing(nil)
 			}
 			h.lock.RUnlock()
 		case <-h.exit:
